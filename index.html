@@ -60,4 +60,225 @@ input[type="text"]{background:#1a1a2e;border:1px solid #8b7355;color:#e0d0b0;pad
 #ab{position:absolute;bottom:15px;right:15px;display:none;z-index:30;gap:8px}
 .ab{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-#na{position:absolute;top:55px;right:8px;z-index:35;display:flex;flex-direction:column;gap:4px;align-items
+#na{position:absolute;top:55px;right:8px;z-index:35;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.n{background:rgba(0,0,0,.85);border-left:3px solid #ffd700;padding:6px 10px;font-size:12px;animation:si .3s}
+@keyframes si{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}
+#mm{position:absolute;top:8px;right:8px;width:90px;height:90px;background:rgba(0,0,0,.7);border:2px solid #8b7355;border-radius:8px;display:none;z-index:20}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas> 
+
+<div id="title">
+<h1>⚔️ AETHERIA ⚔️</h1>
+<h2>Chroniques de Drakmor</h2>
+<button class="btn" onclick="startNewGame()">🎮 Commencer l'aventure</button>
+</div> 
+
+<div id="cc">
+<h2>⚔️ Création du Héros ⚔️</h2>
+<div class="cs">
+<h3>📝 Nom du Voyageur</h3>
+<input type="text" id="cn" placeholder="Nom du héros" maxlength="16">
+</div>
+<div class="cs">
+<h3>🎨 Couleur de l'aura</h3>
+<div class="cp">
+<div class="co s" style="background:#c0392b" onclick="scl='#c0392b'"></div>
+<div class="co" style="background:#2980b9" onclick="scl='#2980b9'"></div>
+<div class="co" style="background:#27ae60" onclick="scl='#27ae60'"></div>
+<div class="co" style="background:#8e44ad" onclick="scl='#8e44ad'"></div>
+</div>
+</div>
+<div class="cs">
+<h3>⚔️ Destinée</h3>
+<div class="cg">
+<div class="cd s" onclick="sc='warrior'">🛡️ Guerrier</div>
+<div class="cd" onclick="sc='mage'">🔮 Mage</div>
+</div>
+</div>
+<button class="btn" onclick="confirmCreation()">✨ Entrer dans le Royaume</button>
+</div> 
+
+<div id="h">
+<div class="ht">
+<div class="hp">
+<div class="htx">❤️ <span id="hhp">100/100</span></div>
+<div class="hb"><div class="hf" id="hpb" style="width:100%"></div></div>
+<div class="htx">🪙 <span id="hgd">0</span></div>
+</div>
+<div class="hp">
+<div class="htx">🗺️ <span id="hzn">Village</span></div>
+</div>
+</div>
+</div> 
+
+<div id="inv">
+<h3>🎒 Sacoche</h3>
+<div id="ic"></div>
+<button class="btn" onclick="toggleInventory()">❌ Fermer</button>
+</div> 
+
+<div id="pm">
+<h2>⏸️ Pause</h2>
+<button class="btn" onclick="resumeGame()">▶️ Reprendre</button>
+</div> 
+
+<div id="tc">
+<div class="dp">
+<div class="db du" onmousedown="ti.u=true" onmouseup="ti.u=false">▲</div>
+<div class="db dd" onmousedown="ti.d=true" onmouseup="ti.d=false">▼</div>
+<div class="db dl" onmousedown="ti.l=true" onmouseup="ti.l=false">◀</div>
+<div class="db dr" onmousedown="ti.r=true" onmouseup="ti.r=false">▶</div>
+</div>
+</div>
+<div id="ab">
+<div class="ab" onclick="attack()">⚔️</div>
+</div> 
+
+<div id="na"></div>
+<canvas id="mm"></canvas> 
+
+<script>
+const c=document.getElementById('c'), x=c.getContext('2d');
+let TS=32, VW=20, VH=15, gs='title', lt=0, p=null, sc='warrior', scl='#c0392b', cm=null, cmi='village', ms={}, ca={x:0,y:0}, k={}, ti={u:false,d:false,l:false,r:false}, eq={w:null,a:null};
+
+const CS={
+    warrior:{hp:150,str:15,icon:'⚔️',startWeapon:'iron_sword'},
+    mage:{hp:80,str:5,icon:'🔮',startWeapon:'wooden_staff'}
+};
+
+const IT={
+    iron_sword:{n:'Épée de fer',i:'⚔️',t:'weapon',dmg:10},
+    wooden_staff:{n:'Bâton de bois',i:'🪄',t:'weapon',dmg:5},
+    health_potion:{n:'Potion de Vie',i:'🧪',t:'consumable',v:50,ef:'heal'}
+};
+
+const TC={grass:'#2d5016',wall:'#4a4a4a',road:'#8B7355',water:'#1e3a5f',floor:'#6b5b4f',door:'#8B4513'};
+
+function init() {
+    resize();
+    window.addEventListener('resize', resize);
+    window.addEventListener('keydown', e => { k[e.key.toLowerCase()] = true; if(e.key===' ') attack(); if(e.key==='i') toggleInventory(); });
+    window.addEventListener('keyup', e => k[e.key.toLowerCase()] = false);
+    if ('ontouchstart' in window) { document.getElementById('tc').style.display = 'block'; document.getElementById('ab').style.display = 'flex'; }
+    genMaps();
+    requestAnimationFrame(loop);
+}
+
+function resize() {
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    TS = Math.floor(Math.min(c.width/16, c.height/12));
+    VW = Math.ceil(c.width/TS); VH = Math.ceil(c.height/TS);
+}
+
+function genMaps() {
+    ms['village'] = {w:30,h:20,n:'Le Village Perdu',t:Array.from({length:20},()=>Array(30).fill('grass')),e:[],ex:[{x:29,y:10,tg:'forest',tx:1,ty:10}]};
+    ms['village'].t[10].fill('road');
+    ms['village'].e.push({type:'chest',x:5,y:5,open:false,loot:[{id:'health_potion',qty:1}]});
+    
+    ms['forest'] = {w:30,h:20,n:'Forêt Mystique',t:Array.from({length:20},()=>Array(30).fill('grass')),e:[],ex:[{x:0,y:10,tg:'village',tx:28,ty:10}]};
+    for(let i=0;i<12;i++) ms['forest'].e.push({type:'enemy',sub:'slime',x:10+i,y:5+i%10,hp:30});
+}
+
+function startNewGame() {
+    document.getElementById('title').style.display = 'none';
+    document.getElementById('cc').style.display = 'flex';
+}
+
+function confirmCreation() {
+    const base = CS[sc];
+    p = { x:10, y:10, dir:'down', hp:base.hp, mhp:base.hp, str:base.str, gd:0, xp:0, mxp:100, inv:[{id:base.startWeapon,qty:1}], col:scl };
+    document.getElementById('cc').style.display = 'none';
+    document.getElementById('h').style.display = 'block';
+    gs = 'play';
+    changeMap('village', 10, 10);
+}
+
+function changeMap(id, tx, ty) {
+    cm = ms[id]; cmi = id; p.x = tx; p.y = ty;
+    document.getElementById('hzn').innerText = cm.n;
+    notify("Lieu : " + cm.n);
+}
+
+function loop(t) {
+    let dt = t - lt; lt = t;
+    if (gs === 'play') { update(dt); draw(); }
+    requestAnimationFrame(loop);
+}
+
+function update(dt) {
+    let dx=0, dy=0;
+    if(k.z || k.arrowup || ti.u) {dy=-1; p.dir='up';}
+    else if(k.s || k.arrowdown || ti.d) {dy=1; p.dir='down';}
+    else if(k.q || k.arrowleft || ti.l) {dx=-1; p.dir='left';}
+    else if(k.d || k.arrowright || ti.r) {dx=1; p.dir='right';}
+
+    if((dx!==0 || dy!==0) && !p.mving) {
+        let nx = p.x+dx, ny = p.y+dy;
+        if(nx>=0 && nx<cm.w && ny>=0 && ny<cm.h && cm.t[ny][nx] !== 'wall') {
+            p.x = nx; p.y = ny;
+            p.mving = true; setTimeout(()=>p.mving=false, 150);
+            cm.ex.forEach(ex => { if(ex.x===p.x && ex.y===p.y) changeMap(ex.tg, ex.tx, ex.ty); });
+        }
+    }
+    ca.x = p.x - VW/2; ca.y = p.y - VH/2;
+    document.getElementById('hhp').innerText = `${p.hp}/${p.mhp}`;
+    document.getElementById('hgd').innerText = p.gd;
+    document.getElementById('hpb').style.width = (p.hp/p.mhp*100)+'%';
+}
+
+function draw() {
+    x.clearRect(0,0,c.width,c.height);
+    for(let y=0; y<cm.h; y++) {
+        for(let xpos=0; xpos<cm.w; xpos++) {
+            x.fillStyle = TC[cm.t[y][xpos]];
+            x.fillRect((xpos-ca.x)*TS, (y-ca.y)*TS, TS+1, TS+1);
+        }
+    }
+    cm.e.forEach(e => {
+        x.font = TS+'px Arial';
+        x.fillText(e.type==='chest'?(e.open?'🔓':'🎁'):'👽', (e.x-ca.x)*TS, (e.y-ca.y+0.8)*TS);
+    });
+    x.fillStyle = p.col;
+    x.font = TS+'px Arial';
+    x.fillText('🧙', (p.x-ca.x)*TS, (p.y-ca.y+0.8)*TS);
+}
+
+function attack() {
+    let tx=p.x, ty=p.y;
+    if(p.dir==='up') ty--; else if(p.dir==='down') ty++; else if(p.dir==='left') tx--; else if(p.dir==='right') tx++;
+    let target = cm.e.find(e => e.x===tx && e.y===ty);
+    if(target && target.type==='enemy') {
+        target.hp -= p.str; notify("Coup porté !");
+        if(target.hp <= 0) { cm.e = cm.e.filter(e=>e!==target); p.gd+=10; notify("Ennemi terrassé ! +10 Or"); }
+    } else if(target && target.type==='chest' && !target.open) {
+        target.open = true; target.loot.forEach(l => { p.inv.push(l); notify("Coffre : "+IT[l.id].n); });
+    }
+}
+
+function notify(t) {
+    let n=document.createElement('div'); n.className='n'; n.innerText=t;
+    document.getElementById('na').appendChild(n); setTimeout(()=>n.remove(), 2000);
+}
+
+function toggleInventory() {
+    let i=document.getElementById('inv');
+    i.style.display = i.style.display==='block'?'none':'block';
+    if(i.style.display==='block') {
+        document.getElementById('ic').innerHTML = p.inv.map(it => `<div class="is" onclick="useItem('${it.id}')">${IT[it.id].i}</div>`).join('');
+    }
+}
+
+function useItem(id) {
+    let it = IT[id];
+    if(it.ef==='heal') { p.hp = Math.min(p.mhp, p.hp+it.v); notify("Soin appliqué !"); }
+    toggleInventory();
+}
+
+function resumeGame() { gs='play'; document.getElementById('pm').style.display='none'; }
+
+window.onload = init;
+</script>
+</body>
+</html>
